@@ -106,14 +106,18 @@ const self = {
 			isVideo = post['is_video'],
 			commentsDisabled = post['comments_disabled'],
 			isPaidPartnership = post['is_paid_partnership'],
-			isAd = post['is_ad'];
+			isAd = post['is_ad'],
+			musicInfo = post['clips_music_attribution_info'] ? post['clips_music_attribution_info'] : null;
+
 		return {
+
 			isVideo,
 			id,
 			shortcode,
 			commentsDisabled,
 			isAd,
 			isPaidPartnership,
+			musicInfo,
 			author: {
 				id: post['owner']['id'],
 				username,
