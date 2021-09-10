@@ -143,7 +143,10 @@ const self = {
 					type: 'video',
 					url: post['video_url'],
 					thumbnail: post['display_url'],
-					views: post['video_view_count']
+					views: post['video_view_count'],
+					plays: post['video_play_count'],
+					has_audio: post['has_audio'],
+					video_duration: post['video_duration'],
 				}]
 			} : {}),
 			...(post['__typename'] === 'GraphSidecar' ? {
@@ -153,7 +156,10 @@ const self = {
 						url: content['node']['is_video'] ? content['node']['video_url'] : content['node']['display_url'],
 						...(content['node']['is_video'] ? {
 							thumbnail: content['node']['display_url'],
-							views: content['node']['video_view_count']
+							views: content['node']['video_view_count'],
+							plays: content['node']['video_play_count'],
+							has_audio: content['node']['has_audio'],
+							video_duration: content['node']['video_duration'],
 						} : {})
 					}))
 			} : {}),
@@ -264,6 +270,7 @@ module.exports = class Insta {
 		return new Promise((resolve, reject) => self.get(username, anonymous ? null : this.sessionId)
 			.then(profile => {
 				const
+
 					id = profile['id'],
 					access = !profile['is_private'] || !!profile['followed_by_viewer'] || profile['username'] === this.username;
 				profileIds[username] = id;
@@ -483,13 +490,17 @@ module.exports = class Insta {
 			if (useGraphQL) {
 				this._getQueryHashs().then(queryHashs => {
 					self.graphQL({ shortcode }, queryHashs.anyPost, this.sessionId)
-						.then(data => resolve(self.fullPost(data['shortcode_media'])))
+						.then(data => {
+							return resolve(self.fullPost(data['shortcode_media']))
+						})
 						.catch(reject);
 				});
 			}
 			else {
 				self.get(`p/${shortcode}`, this.sessionId)
-					.then(post => resolve(self.fullPost(post)))
+					.then(post => {
+						return resolve(self.fullPost(post))
+					})
 					.catch(reject);
 			}
 		});
