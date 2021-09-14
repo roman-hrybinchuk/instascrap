@@ -139,23 +139,33 @@ const self = {
 			...(post['__typename'] === 'GraphImage' ? {
 				contents: [{
 					type: 'photo',
-					url: post['display_url']
+					url: post['display_url'],
+					id: post['id'],
+					accessibilityCaption: post['accessibility_caption'],
+					upcomingEvent: post['upcoming_event'],
 				}]
 			} : {}),
 			...(post['__typename'] === 'GraphVideo' ? {
 				contents: [{
 					type: 'video',
+					id: post['id'],
 					url: post['video_url'],
 					thumbnail: post['display_url'],
 					views: post['video_view_count'],
 					plays: post['video_play_count'],
 					has_audio: post['has_audio'],
 					video_duration: post['video_duration'],
+					accessibilityCaption: post['accessibility_caption'],
+					upcomingEvent: post['upcoming_event'],
+
 				}]
 			} : {}),
 			...(post['__typename'] === 'GraphSidecar' ? {
 				contents: post['edge_sidecar_to_children']['edges']
 					.map(content => ({
+						id: content['node']['id'],
+						accessibilityCaption: content['node']['accessibility_caption'],
+						upcomingEvent: content['node']['upcoming_event'],
 						type: content['node']['is_video'] ? 'video' : 'photo',
 						url: content['node']['is_video'] ? content['node']['video_url'] : content['node']['display_url'],
 						...(content['node']['is_video'] ? {
