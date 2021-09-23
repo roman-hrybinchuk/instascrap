@@ -283,15 +283,27 @@ module.exports = class Insta {
 	getProfile(username = this.username, anonymous = false) {
 		return new Promise((resolve, reject) => self.get(username, anonymous ? null : this.sessionId)
 			.then(profile => {
+				
 				const
-
 					id = profile['id'],
-					access = !profile['is_private'] || !!profile['followed_by_viewer'] || profile['username'] === this.username;
+					access = !profile['is_private'] || !!profile['followed_by_viewer'] || profile['username'] === this.username,
+					fbid = profile['fbid'],
+					username = profile['username'],
+					business_email = profile['business_email'],
+					business_phone_number = profile['business_phone_number'],
+					category_name = profile['category_name'];
+
 				profileIds[username] = id;
 				resolve({
 					id,
+					fbid,
+					username,
+					business_email,
+					business_phone_number,
+					category_name,
 					name: profile['full_name'],
-					pic: profile['profile_pic_url_hd'],
+					picHd: profile['profile_pic_url_hd'],
+					pic: profile['profile_pic_url'],
 					bio: profile['biography'],
 					private: profile['is_private'],
 					access,
