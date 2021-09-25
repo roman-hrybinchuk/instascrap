@@ -76,15 +76,101 @@ const self = {
 		query_hash: queryHash,
 		variables: query ? JSON.stringify(query) : undefined
 	}),
-	partialPost: post => ({
-		shortcode: post['node']['shortcode'],
-		caption: post['node']['edge_media_to_caption']['edges'].length > 0
-			? post['node']['edge_media_to_caption']['edges'][0]['node']['text'] : null,
-		comments: post['node']['edge_media_to_comment']['count'],
-		likes: post['node']['edge_liked_by']['count'],
-		thumbnail: post['node']['display_url'],
-		timestamp: post['node']['taken_at_timestamp']
-	}),
+	partialPost: input => {
+
+		const post = input['node'];
+
+		const
+			caption = post['edge_media_to_caption']['edges'].length > 0
+				? post['edge_media_to_caption']['edges'][0]['node']['text'] : null,
+			username = post['owner']['username'],
+			shortcode = post['shortcode'],
+			id = post['id'],
+			isVideo = post['is_video'],
+			commentsDisabled = post['comments_disabled'],
+			isPaidPartnership = post['is_paid_partnership'],
+			isAd = post['is_ad'],
+			musicInfo = post['clips_music_attribution_info'] ? post['clips_music_attribution_info'] : null;
+
+		return {
+			username,
+			isVideo,
+			id,
+			shortcode,
+			commentsDisabled,
+			isAd,
+			isPaidPartnership,
+			musicInfo,
+			location: post['location'] ? {
+				id: post['location']['id'],
+				name: post['location']['name'],
+				...(post['location']['address_json'] ? {
+					city: JSON.parse(post['location']['address_json'])['city_name']
+				} : {})
+			} : null,
+			...(post['__typename'] === 'GraphImage' ? {
+				contents: [{
+					type: 'photo',
+					url: post['display_url'],
+					id: post['id'],
+					accessibilityCaption: post['accessibility_caption'],
+					upcomingEvent: post['upcoming_event'],
+				}]
+			} : {}),
+			...(post['__typename'] === 'GraphVideo' ? {
+				contents: [{
+					type: 'video',
+					id: post['id'],
+					url: post['video_url'],
+					thumbnail: post['display_url'],
+					views: post['video_view_count'],
+					plays: post['video_play_count'],
+					has_audio: post['has_audio'],
+					video_duration: post['video_duration'],
+					accessibilityCaption: post['accessibility_caption'],
+					upcomingEvent: post['upcoming_event'],
+
+				}]
+			} : {}),
+			...(post['__typename'] === 'GraphSidecar' ? {
+				contents: post['edge_sidecar_to_children']['edges']
+					.map(content => ({
+						id: content['node']['id'],
+						accessibilityCaption: content['node']['accessibility_caption'],
+						upcomingEvent: content['node']['upcoming_event'],
+						type: content['node']['is_video'] ? 'video' : 'photo',
+						url: content['node']['is_video'] ? content['node']['video_url'] : content['node']['display_url'],
+						...(content['node']['is_video'] ? {
+							thumbnail: content['node']['display_url'],
+							views: content['node']['video_view_count'],
+							plays: content['node']['video_play_count'],
+							has_audio: content['node']['has_audio'],
+							video_duration: content['node']['video_duration'],
+						} : {})
+					}))
+			} : {}),
+			...(post['edge_media_to_tagged_user'] ? {
+				tagged: post['edge_media_to_tagged_user']['edges']
+					.map(u => u['node']['user']['username'])
+			} : {}),
+			likes: post['edge_media_preview_like']['count'],
+			caption,
+			hashtags: caption ? caption.match(self.hashtagsRegex) : null,
+			mentions: caption ? caption.match(self.usernamesRegex) : null,
+			edited: post['caption_is_edited'] || false,
+			...(post['edge_media_preview_comment'] ? {
+				commentCount: post['edge_media_preview_comment']['count']
+			} : {}),
+
+			...(post['edge_media_to_comment'] ? {
+				commentCount: post['edge_media_to_comment']['count']
+			} : {}),
+
+			timestamp: post['taken_at_timestamp'],
+			link: insta + 'p/' + shortcode
+		}
+
+	},
 	hashtagsRegex: /(?<=[\s>])#(\d*[A-Za-z_]+\d*)\b(?!;)/g,
 	usernamesRegex: /@([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\\.(?!\\.))){0,28}(?:[A-Za-z0-9_]))?)/g,
 	postComment: comment => ({
@@ -94,7 +180,8 @@ const self = {
 		timestamp: comment['node']['created_at'],
 		hashtags: comment['node']['text'].match(self.hashtagsRegex),
 		mentions: comment['node']['text'].match(self.usernamesRegex),
-		likes: comment['node']['edge_liked_by']['count']
+		likes: comment['node']['edge_liked_by']['count'],
+
 	}),
 	fullPost: post => {
 		const
@@ -283,7 +370,7 @@ module.exports = class Insta {
 	getProfile(username = this.username, anonymous = false) {
 		return new Promise((resolve, reject) => self.get(username, anonymous ? null : this.sessionId)
 			.then(profile => {
-				
+
 				const
 					id = profile['id'],
 					access = !profile['is_private'] || !!profile['followed_by_viewer'] || profile['username'] === this.username,
